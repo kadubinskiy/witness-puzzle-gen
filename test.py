@@ -1,3 +1,2 @@
-temp = 1
-for i in range(temp):
-    print('hi')
+for i in range(3):
+    print(i)

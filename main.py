@@ -13,7 +13,7 @@ class Puzzle():
             self.field.append(row)
         return self.field
 
-    def generate_bounds(self, seed):
+    def generate_bounds(self, seed=None):
         if not seed:
             self.broken_corner_list = []
             self.seed = []
@@ -62,17 +62,46 @@ class Puzzle():
                     self.field[coordinates[0]-1+i][coordinates[1]-1] = '*'
                 for i in range(self.rows-coordinates[1]+1):
                     self.field[coordinates[0]-1][coordinates[1]-1+i] = '*'
+        for i in range(4):
+            if 0 not in self.broken_corner_list:
+                self.field[0][0] = '*'
+            if 1 not in self.broken_corner_list:
+                self.field[0][-1] = '*'
+            if 2 not in self.broken_corner_list:
+                self.field[-1][0] = '*'
+            if 3 not in self.broken_corner_list:
+                self.field[-1][-1] = '*'
     
     def fill_gaps(self):
-        if self.broken_corner_list.index(0):
-            if self.broken_corner_list.index(1):
-                for i in range()
-                self.field[0]
-        else:
-            if not self.broken_corner_list.index(1):
-                for i in range(len(self.field[0])):
-                    self.field[0][i] = '*'
-        self.field[-1]
+        # Upper Row
+        left = self.field[0].index('*')
+        self.field[0][self.field[0].index('*')] = None
+        right = self.field[0].index('*')
+        for index in range(left, right):
+            self.field[0][index] = '*'
+
+        # Lower Row
+        left = self.field[-1].index('*')
+        self.field[-1][self.field[-1].index('*')] = None
+        right = self.field[-1].index('*')
+        for index in range(left, right):
+            self.field[-1][index] = '*'
+
+        # Left Column
+        updown = []
+        for i in range(len(self.field)):
+            if self.field[i][0] == '*':
+                updown.append(i)
+        for index in range(updown[0], updown[-1]):
+            self.field[index][0] = '*'
+
+        # Right Column
+        updown = []
+        for i in range(len(self.field)):
+            if self.field[i][-1] == '*':
+                updown.append(i)
+        for index in range(updown[0], updown[-1]):
+            self.field[index][-1] = '*'
 
     def draw_raw(self):
         for i in range(len(self.field)):
@@ -90,10 +119,11 @@ class Puzzle():
     
 puzzle = Puzzle()
 puzzle.generate_field(7, 7)
-puzzle.generate_bounds(seed=[8, 8, 4, 4, [3, 3], [3, 5]])
+puzzle.generate_bounds()
 puzzle.populate_matrix()
 puzzle.fill_gaps()
 puzzle.draw_game()
 
 
 # seed = [top-left, top-right, bottom-left, bottom-right, first_corner([y, x])...]
+# seed=[8, 8, 4, 4, [3, 3], [3, 5]]
