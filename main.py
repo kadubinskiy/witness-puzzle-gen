@@ -24,7 +24,16 @@ class Puzzle():
                 counter = 0
                 for corner in temp:
                     if corner > 7:
-                        self.seed.append([randint(0, self.cols-1), randint(0, self.rows-1)])
+                        half_rows = int(self.rows/2)
+                        half_cols = int(self.cols/2)
+                        if counter == 0:
+                            self.seed.append([randint(2, half_cols), randint(2, half_rows)])
+                        if counter == 1:
+                            self.seed.append([randint(2, half_cols), randint(half_rows, self.rows-2)])
+                        if counter == 2:
+                            self.seed.append([randint(half_cols, self.cols-2), randint(2, half_rows)])
+                        if counter == 3:
+                            self.seed.append([randint(half_cols, self.cols-2), randint(half_rows, self.rows-2)])
                         self.broken_corner_list.append(counter)
                     counter += 1
         elif seed:
@@ -62,17 +71,17 @@ class Puzzle():
                     self.field[coordinates[0]-1+i][coordinates[1]-1] = '*'
                 for i in range(self.rows-coordinates[1]+1):
                     self.field[coordinates[0]-1][coordinates[1]-1+i] = '*'
-        for i in range(4):
-            if 0 not in self.broken_corner_list:
-                self.field[0][0] = '*'
-            if 1 not in self.broken_corner_list:
-                self.field[0][-1] = '*'
-            if 2 not in self.broken_corner_list:
-                self.field[-1][0] = '*'
-            if 3 not in self.broken_corner_list:
-                self.field[-1][-1] = '*'
+        if 0 not in self.broken_corner_list:
+            self.field[0][0] = '*'
+        if 1 not in self.broken_corner_list:
+            self.field[0][-1] = '*'
+        if 2 not in self.broken_corner_list:
+            self.field[-1][0] = '*'
+        if 3 not in self.broken_corner_list:
+            self.field[-1][-1] = '*'
     
     def fill_gaps(self):
+
         # Upper Row
         left = self.field[0].index('*')
         self.field[0][self.field[0].index('*')] = None
@@ -111,14 +120,14 @@ class Puzzle():
         for i in range(len(self.field)):
             for n in self.field[i]:
                 if n == [None]:
-                    print(" ", end="")
+                    print("  ", end="")
                 if n == '*':
-                    print("*", end="")
+                    print("* ", end="")
             print("\n", end="")
 
     
 puzzle = Puzzle()
-puzzle.generate_field(7, 7)
+puzzle.generate_field(11, 11)
 puzzle.generate_bounds()
 puzzle.populate_matrix()
 puzzle.fill_gaps()
