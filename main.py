@@ -80,37 +80,26 @@ class Puzzle():
         if 3 not in self.broken_corner_list:
             self.field[-1][-1] = '*'
     
-    def fill_gaps(self):
-
-        # Upper Row
-        left = self.field[0].index('*')
-        self.field[0][self.field[0].index('*')] = None
-        right = self.field[0].index('*')
+    def fill_row(self, row_n):
+        left = self.field[row_n].index('*')
+        self.field[row_n][self.field[row_n].index('*')] = None
+        right = self.field[row_n].index('*')
         for index in range(left, right):
-            self.field[0][index] = '*'
+            self.field[row_n][index] = '*'
 
-        # Lower Row
-        left = self.field[-1].index('*')
-        self.field[-1][self.field[-1].index('*')] = None
-        right = self.field[-1].index('*')
-        for index in range(left, right):
-            self.field[-1][index] = '*'
-
-        # Left Column
+    def fill_column(self, column_n):
         updown = []
         for i in range(len(self.field)):
-            if self.field[i][0] == '*':
+            if self.field[i][column_n] == '*':
                 updown.append(i)
         for index in range(updown[0], updown[-1]):
-            self.field[index][0] = '*'
+            self.field[index][column_n] = '*'
 
-        # Right Column
-        updown = []
-        for i in range(len(self.field)):
-            if self.field[i][-1] == '*':
-                updown.append(i)
-        for index in range(updown[0], updown[-1]):
-            self.field[index][-1] = '*'
+    def fill_bounds(self):
+        self.fill_row(0)
+        self.fill_row(-1)
+        self.fill_column(0)
+        self.fill_column(-1)
 
     def draw_raw(self):
         for i in range(len(self.field)):
@@ -130,7 +119,16 @@ puzzle = Puzzle()
 puzzle.generate_field(11, 11)
 puzzle.generate_bounds()
 puzzle.populate_matrix()
-puzzle.fill_gaps()
+puzzle.fill_bounds()
+puzzle.fill_row(2)
+puzzle.fill_row(4)
+puzzle.fill_row(6)
+puzzle.fill_row(8)
+puzzle.fill_column(2)
+puzzle.fill_column(4)
+puzzle.fill_column(6)
+puzzle.fill_column(8)
+
 puzzle.draw_game()
 
 
