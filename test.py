@@ -1,2 +1,2 @@
-for i in range(3):
-    print(i)
+multiplier1, multiplier2 = 1
+print(multiplier1)

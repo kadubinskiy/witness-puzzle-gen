@@ -13,6 +13,21 @@ class Puzzle():
             self.field.append(row)
         return self.field
 
+    def generate_coords(self, flag1 = False, flag2 = False):
+        half_rows = int(self.rows/4)
+        half_cols = int(self.cols/4)
+        multiplier1, multiplier2 = 1, 1
+        adjuster1, adjuster2 = 0, 0
+        if flag1:
+            multiplier1 = -1
+            adjuster1 = 1
+        if flag2:
+            multiplier2 = -1
+            adjuster2 = 1
+        coordinate1 = (multiplier1*randint(2, half_cols)*2)-adjuster1
+        coordinate2 = (multiplier2*randint(2, half_rows)*2)-adjuster2
+        return [coordinate1, coordinate2]
+
     def generate_bounds(self, seed=None):
         if not seed:
             self.broken_corner_list = []
@@ -24,16 +39,14 @@ class Puzzle():
                 counter = 0
                 for corner in temp:
                     if corner > 7:
-                        half_rows = int(self.rows/2)
-                        half_cols = int(self.cols/2)
                         if counter == 0:
-                            self.seed.append([randint(2, half_cols), randint(2, half_rows)])
+                            self.seed.append(self.generate_coords())
                         if counter == 1:
-                            self.seed.append([randint(2, half_cols), randint(half_rows, self.rows-2)])
+                            self.seed.append(self.generate_coords(True, False))
                         if counter == 2:
-                            self.seed.append([randint(half_cols, self.cols-2), randint(2, half_rows)])
+                            self.seed.append(self.generate_coords(False, True))
                         if counter == 3:
-                            self.seed.append([randint(half_cols, self.cols-2), randint(half_rows, self.rows-2)])
+                            self.seed.append(self.generate_coords(True, True))
                         self.broken_corner_list.append(counter)
                     counter += 1
         elif seed:
@@ -51,26 +64,27 @@ class Puzzle():
         for i in range(len(self.broken_corner_list)):
             corner = self.broken_corner_list[i]
             coordinates = [self.seed[i+4][0], self.seed[i+4][1]]
+            print(corner, ':', coordinates)
             if corner == 0:
                 for i in range(coordinates[0]):
-                    self.field[i][coordinates[1]-1] = '*'
+                    self.field[i][coordinates[1]] = '*'
                 for i in range(coordinates[1]):
-                    self.field[coordinates[0]-1][i] = '*'
+                    self.field[coordinates[0]][i] = '*'
             if corner == 1:
                 for i in range(coordinates[0]):
-                    self.field[i][coordinates[1]-1] = '*'
-                for i in range(self.rows-coordinates[1]+1):
-                    self.field[coordinates[0]-1][coordinates[1]-1+i] = '*'
+                    self.field[i][coordinates[1]] = '*'
+                for i in range(self.rows-coordinates[1]):
+                    self.field[coordinates[0]][coordinates[1]+i] = '*'
             if corner == 2:
-                for i in range(self.cols-coordinates[0]+1):
-                    self.field[coordinates[0]-1+i][coordinates[1]-1] = '*'
+                for i in range(self.cols-coordinates[0]):
+                    self.field[coordinates[0]+i][coordinates[1]] = '*'
                 for i in range(coordinates[1]):
-                    self.field[coordinates[0]-1][i] = '*'
+                    self.field[coordinates[0]][i] = '*'
             if corner == 3:
-                for i in range(self.cols-coordinates[0]+1):
-                    self.field[coordinates[0]-1+i][coordinates[1]-1] = '*'
-                for i in range(self.rows-coordinates[1]+1):
-                    self.field[coordinates[0]-1][coordinates[1]-1+i] = '*'
+                for i in range(self.cols-coordinates[0]):
+                    self.field[coordinates[0]+i][coordinates[1]] = '*'
+                for i in range(self.rows-coordinates[1]):
+                    self.field[coordinates[0]][coordinates[1]+i] = '*'
         if 0 not in self.broken_corner_list:
             self.field[0][0] = '*'
         if 1 not in self.broken_corner_list:
@@ -80,16 +94,20 @@ class Puzzle():
         if 3 not in self.broken_corner_list:
             self.field[-1][-1] = '*'
     
+    def unindex(self, list, value):
+        for i in range(len(list)):
+            if list[-1*(i+1)] == value:
+                return -1*(i+1)
+
     def fill_row(self, row_n):
         left = self.field[row_n].index('*')
-        self.field[row_n][self.field[row_n].index('*')] = None
-        right = self.field[row_n].index('*')
-        for index in range(left, right):
+        right = self.unindex(self.field[row_n], '*')
+        for index in range(left, len(self.field[row_n])+right):
             self.field[row_n][index] = '*'
 
     def fill_column(self, column_n):
         updown = []
-        for i in range(len(self.field)):
+        for i in range(self.rows):
             if self.field[i][column_n] == '*':
                 updown.append(i)
         for index in range(updown[0], updown[-1]):
