@@ -61,38 +61,44 @@ class Puzzle():
                     counter += 1
             
     def populate_matrix(self):
-        for i in range(len(self.broken_corner_list)):
-            corner = self.broken_corner_list[i]
-            coordinates = [self.seed[i+4][0], self.seed[i+4][1]]
-            print(corner, ':', coordinates)
+        for i, corner in enumerate(self.broken_corner_list):
+            raw_x, raw_y = self.seed[i + 4]
+
+            x = raw_x if raw_x >= 0 else self.cols + raw_x
+            y = raw_y if raw_y >= 0 else self.rows + raw_y
+
             if corner == 0:
-                for i in range(coordinates[0]):
-                    self.field[i][coordinates[1]] = '*'
-                for i in range(coordinates[1]):
-                    self.field[coordinates[0]][i] = '*'
-            if corner == 1:
-                for i in range(coordinates[0]):
-                    self.field[i][coordinates[1]] = '*'
-                for i in range(self.rows-coordinates[1]):
-                    self.field[coordinates[0]][coordinates[1]+i] = '*'
-            if corner == 2:
-                for i in range(self.cols-coordinates[0]):
-                    self.field[coordinates[0]+i][coordinates[1]] = '*'
-                for i in range(coordinates[1]):
-                    self.field[coordinates[0]][i] = '*'
-            if corner == 3:
-                for i in range(self.cols-coordinates[0]):
-                    self.field[coordinates[0]+i][coordinates[1]] = '*'
-                for i in range(self.rows-coordinates[1]):
-                    self.field[coordinates[0]][coordinates[1]+i] = '*'
+                for row in range(0, y + 1):
+                    self.field[row][x] = '*'
+                for col in range(0, x + 1):
+                    self.field[y][col] = '*'
+
+            elif corner == 1:
+                for row in range(0, y + 1):
+                    self.field[row][x] = '*'
+                for col in range(x, self.cols):
+                    self.field[y][col] = '*'
+
+            elif corner == 2:
+                for row in range(y, self.rows):
+                    self.field[row][x] = '*'
+                for col in range(0, x + 1):
+                    self.field[y][col] = '*'
+
+            elif corner == 3:
+                for row in range(y, self.rows):
+                    self.field[row][x] = '*'
+                for col in range(x, self.cols):
+                    self.field[y][col] = '*'
+
         if 0 not in self.broken_corner_list:
             self.field[0][0] = '*'
         if 1 not in self.broken_corner_list:
-            self.field[0][-1] = '*'
+            self.field[0][self.cols - 1] = '*'
         if 2 not in self.broken_corner_list:
-            self.field[-1][0] = '*'
+            self.field[self.rows - 1][0] = '*'
         if 3 not in self.broken_corner_list:
-            self.field[-1][-1] = '*'
+            self.field[self.rows - 1][self.cols - 1] = '*'
     
     def unindex(self, list, value):
         for i in range(len(list)):
