@@ -1,6 +1,40 @@
 from time import sleep
 from random import randint
 
+class Path():
+    def __init__(self):
+        self.pose = [True, True, True, True]
+
+    def update_pose(self, matrix):
+        for list in matrix:
+            if self in list:
+                x = list.index(self)
+                y = matrix.index(list)
+                break
+
+        if type(matrix[y][x-1]) is Path:
+            self.pose[0] = True
+        else:
+            self.pose[0] = False
+
+        if type(matrix[y-1][x]) is Path:
+            self.pose[1] = True
+        else:
+            self.pose[1] = False
+
+        if type(matrix[y][x+1]) is Path:
+            self.pose[2] = True
+        else:
+            self.pose[2] = False
+
+        if type(matrix[y+1][x]) is Path:
+            self.pose[3] = True
+        else:
+            self.pose[3] = False
+
+class Parameter():
+    pass
+
 class Puzzle():
     def generate_field(self, cols, rows):
         self.field = []
@@ -153,7 +187,7 @@ puzzle.fill_column(4)
 puzzle.fill_column(6)
 puzzle.fill_column(8)
 
-puzzle.draw_game()
+puzzle.draw_raw()
 
 
 # seed = [top-left, top-right, bottom-left, bottom-right, first_corner([y, x])...]
