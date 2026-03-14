@@ -187,7 +187,7 @@ puzzle.fill_column(4)
 puzzle.fill_column(6)
 puzzle.fill_column(8)
 
-puzzle.draw_raw()
+puzzle.draw_game()
 
 
 # seed = [top-left, top-right, bottom-left, bottom-right, first_corner([y, x])...]
