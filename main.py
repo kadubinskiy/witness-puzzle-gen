@@ -2,35 +2,42 @@ from time import sleep
 from random import randint
 
 class Path():
-    def __init__(self):
+    def __init__(self, x, y):
         self.pose = [True, True, True, True]
+        self.x = x
+        self.y = y
 
     def update_pose(self, matrix):
-        for list in matrix:
-            if self in list:
-                x = list.index(self)
-                y = matrix.index(list)
-                break
+        rows, cols = len(matrix), len(matrix[0])
+        x = self.x
+        y = self.y
 
-        if type(matrix[y][x-1]) is Path:
-            self.pose[0] = True
-        else:
-            self.pose[0] = False
+        self.pose[0] = y > 0 and type(matrix[y - 1][x]) is Path
+        self.pose[1] = x < cols - 1 and type(matrix[y][x + 1]) is Path
+        self.pose[2] = y < rows - 1 and type(matrix[y + 1][x]) is Path
+        self.pose[3] = x > 0 and type(matrix[y][x - 1]) is Path
 
-        if type(matrix[y-1][x]) is Path:
-            self.pose[1] = True
-        else:
-            self.pose[1] = False
-
-        if type(matrix[y][x+1]) is Path:
-            self.pose[2] = True
-        else:
-            self.pose[2] = False
-
-        if type(matrix[y+1][x]) is Path:
-            self.pose[3] = True
-        else:
-            self.pose[3] = False
+    def get_element(self):
+        t, r, b, l = self.pose[0], self.pose[1], self.pose[2], self.pose[3]
+        chars = {
+            (1, 1, 1, 1): '┼',   # all four
+            (1, 1, 1, 0): '├',   # top, right, bottom
+            (1, 1, 0, 1): '┴',   # top, right, left
+            (1, 0, 1, 1): '┤',   # top, bottom, left
+            (0, 1, 1, 1): '┬',   # right, bottom, left
+            (1, 1, 0, 0): '└',   # top, right
+            (1, 0, 1, 0): '│',   # top, bottom
+            (1, 0, 0, 1): '┘',   # top, left
+            (0, 1, 1, 0): '┌',   # right, bottom
+            (0, 1, 0, 1): '─',   # right, left
+            (0, 0, 1, 1): '┐',   # bottom, left
+            (1, 0, 0, 0): '╵',   # top only
+            (0, 1, 0, 0): '╶',   # right only
+            (0, 0, 1, 0): '╷',   # bottom only
+            (0, 0, 0, 1): '╴',   # left only
+            (0, 0, 0, 0): ' ',   # none
+        }
+        return chars.get((t, r, b, l))
 
 class Parameter():
     pass
@@ -100,39 +107,41 @@ class Puzzle():
 
             x = raw_x if raw_x >= 0 else self.cols + raw_x
             y = raw_y if raw_y >= 0 else self.rows + raw_y
+            
+            path = Path(y, x)
 
             if corner == 0:
                 for row in range(0, y + 1):
-                    self.field[row][x] = '*'
+                    self.field[row][x] = path
                 for col in range(0, x + 1):
-                    self.field[y][col] = '*'
+                    self.field[y][col] = path
 
             elif corner == 1:
                 for row in range(0, y + 1):
-                    self.field[row][x] = '*'
+                    self.field[row][x] = path
                 for col in range(x, self.cols):
-                    self.field[y][col] = '*'
+                    self.field[y][col] = path
 
             elif corner == 2:
                 for row in range(y, self.rows):
-                    self.field[row][x] = '*'
+                    self.field[row][x] = path
                 for col in range(0, x + 1):
-                    self.field[y][col] = '*'
+                    self.field[y][col] = path
 
             elif corner == 3:
                 for row in range(y, self.rows):
-                    self.field[row][x] = '*'
+                    self.field[row][x] = path
                 for col in range(x, self.cols):
-                    self.field[y][col] = '*'
+                    self.field[y][col] = path
 
         if 0 not in self.broken_corner_list:
-            self.field[0][0] = '*'
+            self.field[0][0] = path
         if 1 not in self.broken_corner_list:
-            self.field[0][self.cols - 1] = '*'
+            self.field[0][self.cols - 1] = path
         if 2 not in self.broken_corner_list:
-            self.field[self.rows - 1][0] = '*'
+            self.field[self.rows - 1][0] = path
         if 3 not in self.broken_corner_list:
-            self.field[self.rows - 1][self.cols - 1] = '*'
+            self.field[self.rows - 1][self.cols - 1] = path
     
     def unindex(self, list, value):
         for i in range(len(list)):
@@ -140,10 +149,11 @@ class Puzzle():
                 return -1*(i+1)
 
     def fill_row(self, row_n):
-        left = self.field[row_n].index('*')
-        right = self.unindex(self.field[row_n], '*')
+        left = self.field[row_n].index(Path())
+        right = self.unindex(self.field[row_n], Path())
         for index in range(left, len(self.field[row_n])+right):
-            self.field[row_n][index] = '*'
+            path = Path(index, row_n)
+            self.field[row_n][index] = path
 
     def fill_column(self, column_n):
         updown = []

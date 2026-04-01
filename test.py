@@ -13,24 +13,9 @@ class Path():
         self.pose[1] = x < cols - 1 and type(matrix[y][x + 1]) is Path
         self.pose[2] = y < rows - 1 and type(matrix[y + 1][x]) is Path
         self.pose[3] = x > 0 and type(matrix[y][x - 1]) is Path
-        # n_row = 0
-        # for row in matrix:
-        #     n_item = 0
-        #     for item in row:
-        #         x = n_item
-        #         y = n_row
-        #         self.pose[0] = y > 0 and type(matrix[y - 1][x]) is Path
-        #         self.pose[1] = x < cols - 1 and type(matrix[y][x + 1]) is Path
-        #         self.pose[2] = y < rows - 1 and type(matrix[y + 1][x]) is Path
-        #         self.pose[3] = x > 0 and type(matrix[y][x - 1]) is Path
-        #         print(x, y, self.pose, self.get_element())
-        #         n_item+=1
-        #     n_row+=1
 
     def get_element(self):
-        # pose: [top, right, bottom, left]
         t, r, b, l = self.pose[0], self.pose[1], self.pose[2], self.pose[3]
-        # Map (top, right, bottom, left) -> box-drawing character
         chars = {
             (1, 1, 1, 1): '┼',   # all four
             (1, 1, 1, 0): '├',   # top, right, bottom
@@ -44,10 +29,10 @@ class Path():
             (0, 1, 0, 1): '─',   # right, left
             (0, 0, 1, 1): '┐',   # bottom, left
             (1, 0, 0, 0): '╵',   # top only
-            (0, 1, 0, 0): '╴',   # right only
+            (0, 1, 0, 0): '╶',   # right only
             (0, 0, 1, 0): '╷',   # bottom only
-            (0, 0, 0, 1): '╶',   # left only
-            (0, 0, 0, 0): '·',   # none
+            (0, 0, 0, 1): '╴',   # left only
+            (0, 0, 0, 0): ' ',   # none
         }
         return chars.get((t, r, b, l))
 
