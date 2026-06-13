@@ -1,9 +1,12 @@
+from collections import deque
+
 from playfield import Path, Parameter
 
 
 class PuzzleFinder:
-    def __init__(self, puzzle):
+    def __init__(self, puzzle, algorithm="dfs"):
         self.puzzle = puzzle
+        self.algorithm = algorithm
         self.reviewed = set()
         self.accepted = set()
         self.rejected = set()
@@ -86,26 +89,43 @@ class PuzzleFinder:
             for parameter in self.puzzle.parameters
         )
 
-    def _reset_search_state(self):
-        self.reviewed.clear()
-        self.accepted.clear()
-        self.rejected.clear()
+    def reset_search_state(self):
+        self.reviewed = set()
+        self.accepted = set()
+        self.rejected = set()
         self.solution_path = []
-        self.explored_states = 0
-        self.dead_ends = 0
-        self.search_trace = []
         self.solutions = []
         self.dead_end_paths = []
         self.selected_solution_index = 0
         self.selected_dead_end_index = 0
         self.selected_dead_end_path = []
         self.display_mode = "solution"
+        self.search_trace = []
+        self.explored_states = 0
+        self.dead_ends = 0
+
+    def solve(self, algorithm=None, **kwargs):
+        algorithm = algorithm or self.algorithm
+        self.algorithm = algorithm
+
+        if algorithm == "dfs":
+            return self.find_solutions(**kwargs)
+
+        if algorithm == "bfs":
+            max_dead_ends = kwargs.get("max_dead_ends", 100)
+            max_states = kwargs.get("max_states", 10000)
+            return self.find_shortest_bfs(
+                max_dead_ends=max_dead_ends,
+                max_states=max_states,
+            )
+
+        raise ValueError(f"Unknown search algorithm: {algorithm}")
 
     def find_solution(self):
-        return self.find_solutions()
+        return self.solve()
 
     def find_solutions(self, max_solutions=50, max_dead_ends=100):
-        self._reset_search_state()
+        self.reset_search_state()
 
         if self.puzzle.start is None or self.puzzle.end is None:
             raise ValueError("Puzzle must have start and end before solving")
@@ -119,6 +139,68 @@ class PuzzleFinder:
             max_dead_ends=max_dead_ends,
         )
 
+        return self._finalize_search_results()
+
+    def find_shortest_bfs(self, max_dead_ends=100, max_states=10000):
+        self.reset_search_state()
+
+        if self.puzzle.start is None or self.puzzle.end is None:
+            raise ValueError("Puzzle must have start and end before solving")
+
+        start = self.puzzle.start
+        end = self.puzzle.end
+        start_coord = self.coord(start)
+
+        queue = deque([(start, [start], {start_coord})])
+
+        while queue:
+            if self.explored_states >= max_states:
+                return self._finalize_search_results()
+
+            current, path, visited = queue.popleft()
+            current_coord = self.coord(current)
+
+            self.reviewed.add(current_coord)
+            self.search_trace.append(("reviewed", current_coord))
+            self.explored_states += 1
+
+            if current is end:
+                if self.validate_all_parameters_against_candidate(path):
+                    self.solutions = [path.copy()]
+                    self.solution_path = path.copy()
+                    self.accepted = self.path_to_coords(self.solution_path)
+                    self.display_mode = "solution"
+                    for node in path:
+                        self.search_trace.append(("accepted", self.coord(node)))
+                    return True
+
+                self.dead_ends += 1
+
+                if len(self.dead_end_paths) < max_dead_ends:
+                    self.dead_end_paths.append(path.copy())
+
+                for node in path:
+                    node_coord = self.coord(node)
+                    self.rejected.add(node_coord)
+                    self.search_trace.append(("rejected", node_coord))
+
+                continue
+
+            for neighbour in self.get_neighbours(current):
+                neighbour_coord = self.coord(neighbour)
+
+                if neighbour_coord not in visited:
+                    next_visited = set(visited)
+                    next_visited.add(neighbour_coord)
+                    queue.append((
+                        neighbour,
+                        path + [neighbour],
+                        next_visited,
+                    ))
+
+        return self._finalize_search_results()
+
+    def _finalize_search_results(self):
         self.solutions.sort(key=len)
 
         if self.solutions:
@@ -250,6 +332,7 @@ class PuzzleFinder:
 
     def get_search_summary(self):
         return {
+            "algorithm": self.algorithm,
             "found": bool(self.solutions),
             "solution_count": len(self.solutions),
             "dead_end_count": len(self.dead_end_paths),

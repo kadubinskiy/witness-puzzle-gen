@@ -2,6 +2,12 @@ from playfield import Puzzle
 from gui import PuzzleGUI
 from finder import PuzzleFinder
 
+# Simple settings — replace with a menu screen later.
+SEARCH_ALGORITHM = "bfs"
+MAX_SOLUTIONS = 500
+MAX_DEAD_ENDS = 1000
+MAX_BFS_STATES = 100000
+
 
 def build_demo_puzzle():
     puzzle = Puzzle()
@@ -18,9 +24,27 @@ def build_demo_puzzle():
 
 if __name__ == "__main__":
     puzzle = build_demo_puzzle()
+    print("START:", puzzle.start)
+    print("END:", puzzle.end)
 
-    finder = PuzzleFinder(puzzle)
-    found = finder.find_solutions(max_solutions=50, max_dead_ends=100)
+    finder = PuzzleFinder(puzzle, algorithm=SEARCH_ALGORITHM)
+
+    if SEARCH_ALGORITHM == "dfs":
+        found = finder.solve(
+            algorithm="dfs",
+            max_solutions=MAX_SOLUTIONS,
+            max_dead_ends=MAX_DEAD_ENDS,
+        )
+    elif SEARCH_ALGORITHM == "bfs":
+        found = finder.solve(
+            algorithm="bfs",
+            max_dead_ends=MAX_DEAD_ENDS,
+            max_states=MAX_BFS_STATES,
+        )
+    else:
+        raise ValueError(f"Unknown search algorithm: {SEARCH_ALGORITHM}")
+
+    print("Search algorithm:", SEARCH_ALGORITHM)
     print("Solver found solution:", found)
     print(finder.get_search_summary())
 

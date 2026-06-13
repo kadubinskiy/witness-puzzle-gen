@@ -332,7 +332,9 @@ class PuzzleGUI:
 
         if self.finder is not None:
             summary = self.finder.get_search_summary()
+            algorithm = summary.get("algorithm", "dfs").upper()
             lines.append(
+                f"Algorithm: {algorithm} | "
                 "Solver: "
                 f"found={summary['found']} | "
                 f"solutions={summary['solution_count']} | "

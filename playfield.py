@@ -351,6 +351,17 @@ class Puzzle:
 
         return border_paths
 
+    def get_valid_endpoint_paths(self):
+        candidates = []
+
+        for path in self.get_border_paths():
+            path.update_pose(self.field)
+
+            if self.is_meaningful_path_cell(path):
+                candidates.append(path)
+
+        return candidates
+
     def generate_start_and_end(self):
         if self.start:
             self.start.is_start = False
@@ -358,13 +369,13 @@ class Puzzle:
         if self.end:
             self.end.is_end = False
 
-        border_paths = self.get_border_paths()
+        endpoint_paths = self.get_valid_endpoint_paths()
 
-        if len(border_paths) < 2:
-            raise ValueError("Need at least 2 border paths for start and end")
+        if len(endpoint_paths) < 2:
+            raise ValueError("Need at least 2 valid endpoint paths for start and end")
 
-        self.start = choice(border_paths)
-        remaining = [path for path in border_paths if path is not self.start]
+        self.start = choice(endpoint_paths)
+        remaining = [path for path in endpoint_paths if path is not self.start]
         self.end = choice(remaining)
 
         self.start.is_start = True
@@ -550,16 +561,33 @@ class Puzzle:
 
         return True
 
-    def place_random_parameter(self, required=None, parameter_type=None):
-        empty_cells = []
+    def count_adjacent_paths(self, x, y):
+        count = 0
+
+        for dx, dy in [(0, -1), (1, 0), (0, 1), (-1, 0)]:
+            nx = x + dx
+            ny = y + dy
+
+            if self.is_in_bounds(nx, ny) and isinstance(self.field[ny][nx], Path):
+                count += 1
+
+        return count
+
+    def get_valid_parameter_cells(self):
+        valid_cells = []
 
         for y in range(self.rows):
             for x in range(self.cols):
-                if self.field[y][x] is None:
-                    empty_cells.append((x, y))
+                if self.field[y][x] is None and self.count_adjacent_paths(x, y) >= 2:
+                    valid_cells.append((x, y))
 
-        if not empty_cells:
-            raise ValueError("No empty cells available for parameter placement")
+        return valid_cells
+
+    def place_random_parameter(self, required=None, parameter_type=None):
+        valid_cells = self.get_valid_parameter_cells()
+
+        if not valid_cells:
+            raise ValueError("No valid cells available for parameter placement")
 
         if parameter_type is None:
             parameter_type = choice(
@@ -572,7 +600,7 @@ class Puzzle:
         if parameter_type in ("even", "odd"):
             required = None
 
-        x, y = choice(empty_cells)
+        x, y = choice(valid_cells)
 
         parameter = Parameter(x, y, required, parameter_type)
         self.field[y][x] = parameter
