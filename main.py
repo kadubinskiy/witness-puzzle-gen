@@ -1,5 +1,6 @@
 from playfield import Puzzle
 from gui import PuzzleGUI
+from finder import PuzzleFinder
 
 
 def build_demo_puzzle():
@@ -9,7 +10,7 @@ def build_demo_puzzle():
     puzzle.populate_matrix()
     puzzle.fill_bounds()
     puzzle.generate_internal_paths(spacing=2)
-    puzzle.place_random_parameter(required=2)
+    puzzle.place_random_parameter()
     puzzle.generate_start_and_end()
 
     return puzzle
@@ -18,11 +19,10 @@ def build_demo_puzzle():
 if __name__ == "__main__":
     puzzle = build_demo_puzzle()
 
-    # TEMPORARY DEBUG - remove after verifying start/end/movement
-    print("START:", puzzle.start)
-    print("END:", puzzle.end)
-    print("CURRENT:", puzzle.current_path)
-    print("STATUS:", puzzle.game_status)
+    finder = PuzzleFinder(puzzle)
+    found = finder.find_solutions(max_solutions=50, max_dead_ends=100)
+    print("Solver found solution:", found)
+    print(finder.get_search_summary())
 
-    gui = PuzzleGUI(puzzle)
+    gui = PuzzleGUI(puzzle, finder=finder)
     gui.run()

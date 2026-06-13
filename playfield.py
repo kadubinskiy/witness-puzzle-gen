@@ -63,15 +63,15 @@ class Path:
 
 
 class Parameter:
-    def __init__(self, x, y, required=1):
+    def __init__(self, x, y, required=1, parameter_type="exact"):
         self.x = x
         self.y = y
         self.required = required
+        self.parameter_type = parameter_type
         self.satisfied = False
 
-    def validate(self, matrix):
+    def count_adjacent_filled_paths(self, matrix):
         rows, cols = len(matrix), len(matrix[0])
-
         count = 0
 
         directions = [
@@ -91,16 +91,44 @@ class Parameter:
                 if isinstance(neighbour, Path) and neighbour.filled:
                     count += 1
 
-        self.satisfied = count == self.required
+        return count
+
+    def validate(self, matrix):
+        count = self.count_adjacent_filled_paths(matrix)
+
+        if self.parameter_type == "exact":
+            self.satisfied = count == self.required
+        elif self.parameter_type == "minimum":
+            self.satisfied = count >= self.required
+        elif self.parameter_type == "maximum":
+            self.satisfied = count <= self.required
+        elif self.parameter_type == "even":
+            self.satisfied = count % 2 == 0
+        elif self.parameter_type == "odd":
+            self.satisfied = count % 2 == 1
+        else:
+            raise ValueError(f"Unknown parameter type: {self.parameter_type}")
+
         return self.satisfied
 
     def get_element(self):
-        return str(self.required)
+        if self.parameter_type == "exact":
+            return str(self.required)
+        if self.parameter_type == "minimum":
+            return f">={self.required}"
+        if self.parameter_type == "maximum":
+            return f"<={self.required}"
+        if self.parameter_type == "even":
+            return "E"
+        if self.parameter_type == "odd":
+            return "O"
+        return "?"
 
     def __repr__(self):
         return (
             f"Parameter({self.x}, {self.y}, "
-            f"required={self.required}, satisfied={self.satisfied})"
+            f"type={self.parameter_type}, required={self.required}, "
+            f"satisfied={self.satisfied})"
         )
 
 
@@ -363,6 +391,113 @@ class Puzzle:
         self.game_status = "playing"
         self.validate_parameters()
 
+    def get_path_neighbours(self, path):
+        neighbours = []
+
+        for dx, dy in [(0, -1), (1, 0), (0, 1), (-1, 0)]:
+            neighbour = self.get_path_at(path.x + dx, path.y + dy)
+
+            if neighbour is not None:
+                neighbours.append(neighbour)
+
+        return neighbours
+
+    def is_path_adjacent_to_parameter(self, path):
+        for dx, dy in [(0, -1), (1, 0), (0, 1), (-1, 0)]:
+            nx = path.x + dx
+            ny = path.y + dy
+
+            if self.is_in_bounds(nx, ny) and isinstance(self.field[ny][nx], Parameter):
+                return True
+
+        return False
+
+    def is_turn_cell(self, path):
+        path.update_pose(self.field)
+        top, right, bottom, left = path.pose
+        vertical = top and bottom and not right and not left
+        horizontal = left and right and not top and not bottom
+        return not (vertical or horizontal)
+
+    def is_straight_intermediate(self, path):
+        neighbours = self.get_path_neighbours(path)
+
+        if len(neighbours) != 2:
+            return False
+
+        offsets = {(neighbour.x - path.x, neighbour.y - path.y) for neighbour in neighbours}
+        return offsets in ({(0, -1), (0, 1)}, {(-1, 0), (1, 0)})
+
+    def is_meaningful_path_cell(self, path):
+        if path.is_start or path.is_end:
+            return True
+
+        neighbours = self.get_path_neighbours(path)
+
+        if len(neighbours) != 2:
+            return True
+
+        if self.is_straight_intermediate(path):
+            return False
+
+        return True
+
+    def _backtrack_segment(self, dx, dy):
+        if len(self.filled_path_stack) < 2:
+            return False
+
+        moved = False
+
+        while len(self.filled_path_stack) >= 2:
+            current = self.filled_path_stack[-1]
+            previous = self.filled_path_stack[-2]
+
+            if previous.x != current.x + dx or previous.y != current.y + dy:
+                break
+
+            popped = self.filled_path_stack.pop()
+
+            if not popped.is_start:
+                popped.filled = False
+
+            self.current_path = self.filled_path_stack[-1]
+            moved = True
+
+            if self.is_meaningful_path_cell(self.current_path):
+                break
+
+        if moved:
+            self.game_status = "playing"
+
+        return moved
+
+    def _advance_segment(self, dx, dy):
+        first = self.get_path_at(self.current_path.x + dx, self.current_path.y + dy)
+
+        if first is None or first.filled:
+            return False
+
+        target = first
+
+        while True:
+            target.filled = True
+            self.filled_path_stack.append(target)
+            self.current_path = target
+
+            if target.is_end:
+                self.finish_attempt()
+                return True
+
+            if self.is_meaningful_path_cell(target):
+                return True
+
+            next_target = self.get_path_at(target.x + dx, target.y + dy)
+
+            if next_target is None or next_target.filled:
+                return True
+
+            target = next_target
+
     def move_player(self, dx, dy):
         if self.game_status != "playing":
             return False
@@ -370,40 +505,17 @@ class Puzzle:
         if self.current_path is None:
             return False
 
-        nx = self.current_path.x + dx
-        ny = self.current_path.y + dy
-
-        if not self.is_in_bounds(nx, ny):
-            return False
-
-        target = self.get_path_at(nx, ny)
-
-        if target is None:
-            return False
-
         if len(self.filled_path_stack) >= 2:
             previous = self.filled_path_stack[-2]
+            first_step = self.get_path_at(
+                self.current_path.x + dx,
+                self.current_path.y + dy,
+            )
 
-            if target is previous:
-                current = self.filled_path_stack.pop()
+            if first_step is previous:
+                return self._backtrack_segment(dx, dy)
 
-                if not current.is_start:
-                    current.filled = False
-
-                self.current_path = previous
-                return True
-
-        if not target.filled:
-            target.filled = True
-            self.filled_path_stack.append(target)
-            self.current_path = target
-
-            if target.is_end:
-                self.finish_attempt()
-
-            return True
-
-        return False
+        return self._advance_segment(dx, dy)
 
     def finish_attempt(self):
         if self.validate_parameters():
@@ -438,7 +550,7 @@ class Puzzle:
 
         return True
 
-    def place_random_parameter(self, required=None):
+    def place_random_parameter(self, required=None, parameter_type=None):
         empty_cells = []
 
         for y in range(self.rows):
@@ -449,12 +561,20 @@ class Puzzle:
         if not empty_cells:
             raise ValueError("No empty cells available for parameter placement")
 
-        if required is None:
-            required = randint(1, 4)
+        if parameter_type is None:
+            parameter_type = choice(
+                ["exact", "minimum", "maximum", "even", "odd"],
+            )
+
+        if parameter_type in ("exact", "minimum", "maximum") and required is None:
+            required = randint(1, 3)
+
+        if parameter_type in ("even", "odd"):
+            required = None
 
         x, y = choice(empty_cells)
 
-        parameter = Parameter(x, y, required)
+        parameter = Parameter(x, y, required, parameter_type)
         self.field[y][x] = parameter
         self.parameters.append(parameter)
 
@@ -491,6 +611,6 @@ if __name__ == "__main__":
 
     puzzle.fill_bounds()
     puzzle.generate_internal_paths(spacing=2)
-    puzzle.place_random_parameter(required=2)
+    puzzle.place_random_parameter()
     puzzle.generate_start_and_end()
     puzzle.draw_game()
