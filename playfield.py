@@ -1,4 +1,4 @@
-from random import randint, choice
+import random
 
 
 class Path:
@@ -133,7 +133,63 @@ class Parameter:
 
 
 class Puzzle:
+    def __init__(self):
+        self.seed = None
+        self.rng = None
+        self.boundary_data = None
+
+    def set_seed(self, seed=None):
+        if seed is None:
+            seed = random.SystemRandom().randint(0, 2**32 - 1)
+
+        self.seed = int(seed)
+        self.rng = random.Random(self.seed)
+        return self.seed
+
+    def ensure_rng(self):
+        if self.rng is None:
+            self.set_seed()
+
+    def generate_dimensions(
+        self,
+        min_size=7,
+        max_size=15,
+        rectangle_chance=0.20,
+    ):
+        self.ensure_rng()
+
+        sizes = [
+            size
+            for size in range(min_size, max_size + 1)
+            if size % 2 == 1 and size >= 5 and int(size / 4) >= 2
+        ]
+
+        if len(sizes) < 2:
+            raise ValueError(
+                f"Need at least two valid odd sizes between {min_size} and {max_size}",
+            )
+
+        if self.rng.random() < rectangle_chance:
+            cols = self.rng.choice(sizes)
+            rows = self.rng.choice([size for size in sizes if size != cols])
+        else:
+            size = self.rng.choice(sizes)
+            cols = size
+            rows = size
+
+        return cols, rows
+
     def generate_field(self, cols, rows):
+        if cols < 5 or rows < 5:
+            raise ValueError("Puzzle must be at least 5x5")
+        if cols % 2 == 0 or rows % 2 == 0:
+            raise ValueError("Puzzle dimensions should be odd for this generator")
+        if int(cols / 4) < 2 or int(rows / 4) < 2:
+            raise ValueError(
+                "Puzzle dimensions too small for border generation "
+                f"(need floor(dim/4) >= 2, got cols={cols}, rows={rows})",
+            )
+
         self.field = []
         self.cols = cols
         self.rows = rows
@@ -155,6 +211,8 @@ class Puzzle:
         return self.field
 
     def generate_coords(self, flag1=False, flag2=False):
+        self.ensure_rng()
+
         half_rows = int(self.rows / 4)
         half_cols = int(self.cols / 4)
 
@@ -169,21 +227,22 @@ class Puzzle:
             multiplier2 = -1
             adjuster2 = 1
 
-        coordinate1 = (multiplier1 * randint(2, half_cols) * 2) - adjuster1
-        coordinate2 = (multiplier2 * randint(2, half_rows) * 2) - adjuster2
+        coordinate_x = (multiplier1 * self.rng.randint(2, half_cols) * 2) - adjuster1
+        coordinate_y = (multiplier2 * self.rng.randint(2, half_rows) * 2) - adjuster2
 
-        return [coordinate1, coordinate2]
+        return [coordinate_x, coordinate_y]
 
-    def generate_bounds(self, seed=None):
+    def generate_bounds(self, boundary_data=None):
+        self.ensure_rng()
         self.broken_corner_list = []
 
-        if seed is None:
-            self.seed = []
+        if boundary_data is None:
+            self.boundary_data = []
 
             for _ in range(4):
-                self.seed.append(randint(0, 9))
+                self.boundary_data.append(self.rng.randint(0, 9))
 
-            temp = self.seed.copy()
+            temp = self.boundary_data.copy()
 
             if self.field and self.cols and self.rows:
                 counter = 0
@@ -191,21 +250,21 @@ class Puzzle:
                 for corner in temp:
                     if corner > 7:
                         if counter == 0:
-                            self.seed.append(self.generate_coords())
+                            self.boundary_data.append(self.generate_coords())
                         elif counter == 1:
-                            self.seed.append(self.generate_coords(True, False))
+                            self.boundary_data.append(self.generate_coords(True, False))
                         elif counter == 2:
-                            self.seed.append(self.generate_coords(False, True))
+                            self.boundary_data.append(self.generate_coords(False, True))
                         elif counter == 3:
-                            self.seed.append(self.generate_coords(True, True))
+                            self.boundary_data.append(self.generate_coords(True, True))
 
                         self.broken_corner_list.append(counter)
 
                     counter += 1
 
         else:
-            self.seed = seed
-            temp = self.seed[0:4]
+            self.boundary_data = boundary_data
+            temp = self.boundary_data[0:4]
 
             if self.field and self.cols and self.rows:
                 counter = 0
@@ -218,7 +277,7 @@ class Puzzle:
 
     def populate_matrix(self):
         for i, corner in enumerate(self.broken_corner_list):
-            raw_x, raw_y = self.seed[i + 4]
+            raw_x, raw_y = self.boundary_data[i + 4]
 
             x = raw_x if raw_x >= 0 else self.cols + raw_x
             y = raw_y if raw_y >= 0 else self.rows + raw_y
@@ -363,6 +422,8 @@ class Puzzle:
         return candidates
 
     def generate_start_and_end(self):
+        self.ensure_rng()
+
         if self.start:
             self.start.is_start = False
 
@@ -374,9 +435,9 @@ class Puzzle:
         if len(endpoint_paths) < 2:
             raise ValueError("Need at least 2 valid endpoint paths for start and end")
 
-        self.start = choice(endpoint_paths)
+        self.start = self.rng.choice(endpoint_paths)
         remaining = [path for path in endpoint_paths if path is not self.start]
-        self.end = choice(remaining)
+        self.end = self.rng.choice(remaining)
 
         self.start.is_start = True
         self.end.is_end = True
@@ -583,24 +644,64 @@ class Puzzle:
 
         return valid_cells
 
+    def is_parameter_locally_feasible(self, x, y, required, parameter_type):
+        adjacent_path_count = self.count_adjacent_paths(x, y)
+
+        if parameter_type == "exact":
+            return 0 <= required <= adjacent_path_count
+        if parameter_type == "minimum":
+            return required <= adjacent_path_count
+        if parameter_type == "maximum":
+            return required >= 0
+        if parameter_type == "even":
+            return any(
+                count % 2 == 0
+                for count in range(adjacent_path_count + 1)
+            )
+        if parameter_type == "odd":
+            return any(
+                count % 2 == 1
+                for count in range(adjacent_path_count + 1)
+            )
+
+        raise ValueError(f"Unknown parameter type: {parameter_type}")
+
+    def remove_parameter(self, parameter):
+        if parameter not in self.parameters:
+            return False
+
+        cell = self.field[parameter.y][parameter.x]
+
+        if cell is not parameter:
+            return False
+
+        self.field[parameter.y][parameter.x] = None
+        self.parameters.remove(parameter)
+        return True
+
     def place_random_parameter(self, required=None, parameter_type=None):
+        self.ensure_rng()
+
         valid_cells = self.get_valid_parameter_cells()
 
         if not valid_cells:
             raise ValueError("No valid cells available for parameter placement")
 
         if parameter_type is None:
-            parameter_type = choice(
-                ["exact", "minimum", "maximum", "even", "odd"],
-            )
+            if len(self.parameters) == 0:
+                parameter_type = self.rng.choice(["exact", "minimum", "even", "odd"])
+            else:
+                parameter_type = self.rng.choice(
+                    ["exact", "minimum", "maximum", "even", "odd"],
+                )
 
         if parameter_type in ("exact", "minimum", "maximum") and required is None:
-            required = randint(1, 3)
+            required = self.rng.randint(1, 3)
 
         if parameter_type in ("even", "odd"):
             required = None
 
-        x, y = choice(valid_cells)
+        x, y = self.rng.choice(valid_cells)
 
         parameter = Parameter(x, y, required, parameter_type)
         self.field[y][x] = parameter
@@ -633,12 +734,14 @@ class Puzzle:
 
 if __name__ == "__main__":
     puzzle = Puzzle()
-    puzzle.generate_field(11, 11)
+    puzzle.set_seed()
+    cols, rows = puzzle.generate_dimensions()
+    puzzle.generate_field(cols, rows)
     puzzle.generate_bounds()
     puzzle.populate_matrix()
 
     puzzle.fill_bounds()
     puzzle.generate_internal_paths(spacing=2)
-    puzzle.place_random_parameter()
     puzzle.generate_start_and_end()
+    puzzle.place_random_parameter()
     puzzle.draw_game()
